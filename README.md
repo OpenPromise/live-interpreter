@@ -43,9 +43,17 @@ python main.py "https://www.youtube.com/watch?v=<直播ID>" --lang zh
 
 ## 文档
 
-- [docs/guide.md](docs/guide.md) — 安装配置、命令行参数、架构、测试方法
-- [docs/obs.md](docs/obs.md) — OBS 集成（画面源 / 字幕浮层 / 音频混流）
-- [docs/troubleshooting.md](docs/troubleshooting.md) — 常见问题排查
+| 文档 | 内容 |
+|---|---|
+| [docs/README.md](docs/README.md) | 文档索引 |
+| [docs/guide.md](docs/guide.md) | 安装配置、命令行参数、测试方法 |
+| [docs/deployment.md](docs/deployment.md) | 部署指南（环境、百炼开通、运行、成本） |
+| [docs/obs.md](docs/obs.md) | OBS 集成（画面 / 字幕 / 音频） |
+| [docs/architecture.md](docs/architecture.md) | 架构与协议详解 |
+| [docs/development.md](docs/development.md) | 开发指南与扩展点 |
+| [docs/troubleshooting.md](docs/troubleshooting.md) | 常见问题排查 |
+
+English: [README.en.md](README.en.md)
 
 ## 目录结构
 
@@ -71,3 +79,15 @@ live-interpreter/
 - `.env` 含 API Key，已被 `.gitignore` 忽略，不会提交
 - 国内网络访问 YouTube/Twitch 需要代理：`--proxy http://127.0.0.1:7890`（百炼 API 本身国内直连）
 - 计费：百炼按 token 计费（音频输入约 40 元/百万、音频输出约 160 元/百万，以控制台为准），新用户有免费额度
+
+## 安全
+
+见 [SECURITY.md](SECURITY.md)：API Key 只存 `.env`，不要提交或公开；本地服务默认只绑定 127.0.0.1。
+
+## 贡献
+
+欢迎提交 Issue 与 Pull Request。开发流程与扩展点见 [docs/development.md](docs/development.md)。
+
+## License
+
+[MIT](LICENSE)
