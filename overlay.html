@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>直播同传字幕</title>
+<style>
+  html, body {
+    background: transparent;
+    margin: 0;
+    overflow: hidden;
+    font-family: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
+  }
+  #wrap {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 94vw;
+    text-align: center;
+    pointer-events: none;
+  }
+  body.pos-bottom #wrap { bottom: 6vh; }
+  body.pos-top #wrap { top: 6vh; }
+  #src, #out {
+    transition: opacity .6s ease;
+    word-break: break-word;
+  }
+  #src {
+    color: rgba(255, 255, 255, .78);
+    margin-bottom: .35em;
+    min-height: 1.25em;
+    text-shadow: 0 0 6px #000, 0 2px 4px rgba(0, 0, 0, .9);
+  }
+  #out {
+    color: #fff;
+    font-weight: 700;
+    text-shadow: 0 0 8px #000, 0 3px 6px rgba(0, 0, 0, .85);
+  }
+  .hidden { opacity: 0; }
+  #status {
+    position: fixed;
+    top: 8px;
+    right: 12px;
+    color: rgba(255, 255, 255, .55);
+    font-size: 13px;
+    text-shadow: 0 0 4px #000;
+  }
+</style>
+</head>
+<body class="pos-bottom">
+  <div id="wrap">
+    <div id="src" class="hidden"></div>
+    <div id="out" class="hidden"></div>
+  </div>
+  <div id="status"></div>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const showSource = params.get("show_source") !== "0";
+    const outSize = parseInt(params.get("size") || "52", 10);
+    const srcSize = Math.max(14, Math.round(outSize * 0.55));
+    const position = params.get("position") === "top" ? "pos-top" : "pos-bottom";
+    const ttl = parseInt(params.get("ttl") || "9000", 10);
+
+    document.body.className = position;
+    const outEl = document.getElementById("out");
+    const srcEl = document.getElementById("src");
+    outEl.style.fontSize = outSize + "px";
+    srcEl.style.fontSize = srcSize + "px";
+    if (!showSource) srcEl.style.display = "none";
+
+    const statusEl = document.getElementById("status");
+    let ws = null;
+
+    function setStatus(text) {
+      if (statusEl) statusEl.textContent = text;
+    }
+
+    function show(el, text) {
+      el.textContent = text;
+      el.classList.remove("hidden");
+      clearTimeout(el._timer);
+      el._timer = setTimeout(() => el.classList.add("hidden"), ttl);
+    }
+
+    function connect() {
+      const proto = location.protocol === "https:" ? "wss://" : "ws://";
+      ws = new WebSocket(proto + location.host + "/ws");
+      ws.onopen = () => setStatus("● 已连接");
+      ws.onmessage = (ev) => {
+        let e;
+        try { e = JSON.parse(ev.data); } catch (_) { return; }
+        if (e.type === "source") show(srcEl, e.text || "");
+        else if (e.type === "translation") show(outEl, e.text || "");
+      };
+      ws.onclose = () => { setStatus("○ 已断开，重连中"); setTimeout(connect, 2000); };
+      ws.onerror = () => ws.close();
+    }
+    connect();
+  </script>
+</body>
+</html>

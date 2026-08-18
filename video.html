@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>直播间视频源</title>
+<style>
+  html, body { background: #000; margin: 0; overflow: hidden; }
+  video { width: 100vw; height: 100vh; object-fit: contain; background: #000; }
+  #status {
+    position: fixed; top: 8px; left: 12px;
+    color: #fff; font: 12px "Microsoft YaHei", sans-serif;
+    text-shadow: 0 0 4px #000; z-index: 9;
+  }
+</style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div id="status">连接中...</div>
+  <script src="/hls.min.js"></script>
+  <script>
+    const stage = document.getElementById("stage");
+    const statusEl = document.getElementById("status");
+    let hls = null;
+    let currentUrl = "";
+
+    function setStatus(t) { statusEl.textContent = t; }
+
+    function embedIframe(url) {
+      if (hls) { hls.destroy(); hls = null; }
+      currentUrl = url;
+      stage.innerHTML = "";
+      const f = document.createElement("iframe");
+      f.src = url;
+      f.setAttribute("allow", "autoplay; fullscreen");
+      f.setAttribute("allowfullscreen", "true");
+      Object.assign(f.style, {
+        position: "fixed", inset: "0", width: "100vw", height: "100vh",
+        border: "0", background: "#000",
+      });
+      stage.appendChild(f);
+      setStatus("● 官方播放器中");
+    }
+
+    async function loadVideo() {
+      try {
+        const resp = await fetch("/api/video_info");
+        const data = await resp.json();
+        if (data.kind === "youtube" || data.kind === "twitch") {
+          if (data.embed !== currentUrl) embedIframe(data.embed);
+          return;
+        }
+        if (!data.url) { setStatus("未获取到视频流"); return; }
+        if (data.url === currentUrl && hls) { setStatus("● 播放中"); return; }
+        currentUrl = data.url;
+        if (hls) { hls.destroy(); hls = null; }
+        stage.innerHTML = "";
+        const video = document.createElement("video");
+        video.autoplay = true;
+        video.playsInline = true;
+        Object.assign(video.style, {
+          width: "100vw", height: "100vh",
+          objectFit: "contain", background: "#000",
+        });
+        stage.appendChild(video);
+        if (video.canPlayType("application/vnd.apple.mpegurl")) {
+          video.src = data.url;
+          video.play().catch(() => {});
+        } else if (window.Hls && Hls.isSupported()) {
+          hls = new Hls({ liveDurationInfinity: true, lowLatencyMode: true });
+          hls.loadSource(data.url);
+          hls.attachMedia(video);
+          hls.on(Hls.Events.ERROR, (e, d) => {
+            if (d.fatal) {
+              setStatus("播放错误，3 秒后重试");
+              setTimeout(() => {
+                if (hls) { hls.destroy(); hls = null; }
+                currentUrl = "";
+                loadVideo();
+              }, 3000);
+            }
+          });
+          setStatus("● 播放中");
+        } else {
+          setStatus("当前浏览器不支持 HLS");
+        }
+      } catch (e) {
+        setStatus("获取视频流失败: " + e);
+      }
+    }
+
+    loadVideo();
+    setInterval(loadVideo, 60000); // 官方嵌入无需刷新；HLS 直链会过期，每分钟刷一次
+  </script>
+</body>
+</html>
